@@ -1,0 +1,34 @@
+Create Python Virtual Environment 
+    https://www.w3schools.com/python/python_virtualenv.asp
+
+pwd
+    /Users/vatsalsharma/Documents/CGI/AI Cohort
+
+python -m venv ai_cohort
+
+source ai_cohort/bin/activate
+
+cd W1_DevInContainer
+pip install -r requirements.txt
+
+streamlit run streamlit_routine_app.py
+
+# deactivate
+
+vatsalsharma@Vatsals-MacBook-Pro ~ % postgres -V
+postgres (PostgreSQL) 14.18 (Homebrew)
+vatsalsharma@Vatsals-MacBook-Pro ~ % brew services start postgresql@14 
+==> Successfully started `postgresql@14` (label: homebrew.mxcl.postgresql@14)
+    localhost 5432
+    vatsal vatsal_postgres14
+
+    psql -U vatsal AI_COHORT
+
+    Super user is vatsalsharma
+
+
+pip install psycopg2
+
+Python-Postgres link
+    https://www.datacamp.com/tutorial/tutorial-postgresql-python
+    

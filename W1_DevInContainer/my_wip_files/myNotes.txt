@@ -1,0 +1,18 @@
+1. Create requirements.txt file.
+    Add required libraries 
+
+2. Create sckleton app (.py) 
+
+3. Create Dockerfile
+
+docker build -t streamlit_routine .
+
+# To check all the docker images
+docker images
+
+docker run -p 8501:8501 streamlit_routine
+
+View Streamlit app in browser.
+    http://0.0.0.0:8501
+    http://localhost:8501/_stcore/health
+

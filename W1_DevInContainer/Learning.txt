@@ -1,0 +1,163 @@
+pwd
+/Users/vatsalsharma/Documents/CGI/AI Cohort/W1_DevInContainer
+
+For Streamlit Container 
+volumes:
+      - .:/app 
+
+Change your Python code locally → container sees it immediately.
+
+Just run:
+    docker compose up
+
+No rebuild needed unless you:   
+    Change requirements.txt
+    Change the Dockerfile   
+    Add/remove system dependencies
+
+    # Build and start
+    docker compose up --build
+
+# Stop but keep data
+docker compose down
+
+# Stop + delete everything (including DB data)
+# docker compose down - v
+# docker volume prune -f
+
+
+#######
+In Postgres Container
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vatsal -d AI_COHORT"]
+      interval: 5s
+      retries: 5
+      timeout: 3s  
+In Streamlit App Container
+    depends_on:
+      pgdatabase:
+        condition: service_healthy
+
+This is to ensure, Database is up before application tries to connect to it. 
+
+#############
+If we don't add volume for the app code, then 
+COPY . /app
+That means your code is baked into the image at build time → every code change requires docker compose up --build.
+
+############
+Difference between 
+CMD ["sh", "-c", "python create_table.py && streamlit run streamlit_routine_app.py --server.port=8501 --server.address=0.0.0.0"] 
+and 
+CMD ["streamlit", "run", "create_table.py"]
+
+
+CMD ["sh", "-c", "python create_table.py && streamlit run streamlit_routine_app.py --server.port=8501 --server.address=0.0.0.0"]
+What happens here
+This runs a shell (sh) inside the container.
+  That shell executes the full command:
+  python create_table.py && streamlit run streamlit_routine_app.py --server.port=8501 --server.address=0.0.0.0
+
+Behavior:
+First python create_table.py runs.
+
+If it succeeds (exit code 0), then streamlit run ... starts.
+
+If it fails, Streamlit will not start.
+
+🔹 Use cases
+You want multiple commands run in sequence.
+You want a “setup” step (like creating tables, migrations, etc.) before starting the main service.
+Works like an entrypoint script without writing a separate file.
+
+
+CMD ["streamlit", "run", "create_table.py"]
+🔹 What happens here
+This directly runs streamlit run create_table.py.
+Streamlit treats create_table.py as your main app and serves it on port 8501.
+No extra shell, no && chaining.
+
+🔹 Use cases
+You just want to run one script — the Streamlit app.
+Simpler, cleaner, faster to start.
+
+Key Differences
+Feature 	                              With sh -c	                                    With direct CMD
+Shell involved	                        Yes (sh)	                                      No
+Can chain multiple commands	            Yes (&&, ;)	                                    No
+Runs migrations/init before app	        Yes	                                            No
+Simplicity	                            More complex	                                  Cleaner
+Failure handling	                      If first command fails, second won’t run        N/A (only one command)
+
+
+##############
+docker compose up --build
+
+Forces Docker to rebuild the image(s) before starting containers.
+
+Needed when:
+  You changed something in your Dockerfile.
+  You added/removed files that are part of the image build context (copied via COPY or ADD).
+  You want to refresh dependencies installed during image build.
+
+
+docker compose up
+
+  Just starts containers using the last built image.
+  Faster, because it skips the build step.
+
+Use this if:
+  You only changed code that is mounted as a volume (not baked into the image).
+  You don’t need new dependencies or base image updates.
+
+######
+.env file (so you don’t hardcode secrets in Python)
+
+#####
+Q: In streamlit, we have DB_HOST=postgres why 'postgres' ? shouldn't it be localhost ?
+A: This is one of the biggest differences between running locally vs running in Docker Compose.
+Why DB_HOST=postgres instead of localhost?
+
+In Docker Compose, each service (container) gets its own isolated network.
+By default, Docker Compose creates a bridge network and every service is given a DNS name equal to its service name.
+So, inside the streamlit container, if you want to connect to the Postgres container.
+
+Outside Docker (running locally on your laptop) → you connect with:
+host = "localhost"
+
+Inside Docker Compose (container → container) → you connect with:
+host = "pgdatabase"   # service name from docker-compose.yml
+
+
+#####
+Why only build: . for Streamlit?
+Because Streamlit app is your custom code → you need to bake your Python files + requirements into an image.
+Postgres already has an official maintained image → you just reuse it.
+
+👉 Rule of thumb:
+Your code → build: (with Dockerfile)
+Standard services (DBs, caches, queues, etc.) → image:
+
+what is the significance of "build: ." and why only in steamlit ?
+ChatGPT said:
+Great question 👍 — the difference between build: . and image: ... in docker-compose trips people up a lot.
+
+🔹 build: .
+Means “build an image from the Dockerfile in this directory (.)”.
+Used when you have your own source code (like your Streamlit app).
+Compose will look for a Dockerfile inside the given directory, build a custom image, and then run the container from it.
+
+In your case:
+
+streamlit:
+  build: .
+
+This tells Docker to:
+Go into the current directory (.).
+Read your Dockerfile.
+Build a new image that includes your app (app.py, create_table.py, common_module/, dependencies).
+Run the container from that custom image.
+
+🔹 image: postgres:15
+Means “use an existing prebuilt image from Docker Hub (registry)”.
+No Dockerfile needed because Postgres is already packaged for you.

@@ -1,0 +1,45 @@
+services:
+  pgdatabase:
+    image: postgres:14
+    container_name: pg_container
+    environment:
+      - POSTGRES_USER=vatsal
+      - POSTGRES_PASSWORD=vatsal_postgres14
+      - POSTGRES_DB=AI_COHORT
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vatsal -d AI_COHORT"]
+      interval: 5s
+      retries: 5
+      timeout: 3s  
+  pgadmin:
+    image: dpage/pgadmin4
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@admin.com
+      - PGADMIN_DEFAULT_PASSWORD=root
+    ports:
+      - "8080:80"
+  streamlit:
+    build: .
+    container_name: streamlit_routine_app
+    depends_on:
+      # - pgdatabase
+      pgdatabase:
+        condition: service_healthy
+    ports:
+      - "8501:8501"
+    volumes:
+      - .:/app           # mount your local project folder into /app
+      - ./Uploaded_Files:/app/Uploaded_Files  # persist uploads locally
+    environment:
+      - DB_HOST=pgdatabase
+      - DB_PORT=5432
+      - DB_NAME=AI_COHORT
+      - DB_USER=vatsal
+      - DB_PASSWORD=vatsal_postgres14
+
+volumes:
+  postgres_data:   # Named volume for Postgres persistence
